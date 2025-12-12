@@ -13,16 +13,15 @@ export const getProducts = async (req:Request , res:Response) =>{
 
 export const addProducts = async (req: Request, res: Response) => {
   try {
-    const { id, name, quantity, price, description } = req.body;
+    const { name, quantity, price, description } = req.body;
 
-    if (!id || !name || !quantity || !price || !description) {
+    if (!name || !quantity || !price || !description) {
       return res.status(400).json({
         message: "All fields are required",
       });
     }
 
     const result = await productModel.create({
-      id,
       name,
       quantity,
       price,
@@ -71,3 +70,37 @@ export const deleteProduct = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const addReview = async (req:Request, res:Response) => {
+  try {
+    const { productId } = req.params;
+    const { userId, userName, rating, comment } = req.body;
+
+    // Find product
+    const product = await productModel.findById(productId);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Push review
+    product.reviews.push({
+      userId,
+      userName,
+      rating,
+      comment,
+    });
+
+    await product.save();
+
+    return res.status(201).json({
+      message: "Review added successfully",
+      reviews: product.reviews,
+    });
+  } catch (err:any) {
+    console.log(err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
