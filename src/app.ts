@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { connectDB } from "./config/db";
 import router from "./routes/authRoutes";
 import productRoutes from "./routes/produtRoutes";
+import orderRoutes from './routes/orderRoute';
 import cors from "cors";
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.get("/", (req, res) => {
 // Routes go here
 app.use("/api/auth" , router);
 app.use("/api/products" , productRoutes);
+app.use("/api/order" , orderRoutes)
 
 
 export default app;

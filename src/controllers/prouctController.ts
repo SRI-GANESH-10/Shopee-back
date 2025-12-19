@@ -1,19 +1,37 @@
-import { Request , Response } from "express";
+import { Request, Response } from "express";
 import productModel from "../models/productModel";
+import cloudinary from "../config/cloudinary";
 
-export const getProducts = async (req:Request , res:Response) =>{
+const uploadToCloudinary = async (file: Express.Multer.File, folderPath: string) => {
+  console.log("Uploading file:", file.originalname, "to folder:", folderPath);
 
-    const result = await productModel.find();
-    res.status(200).json({
-        message:"Success",
-        products:result,
-    })
+  try {
+    const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
 
-}
+    const result = await cloudinary.uploader.upload(base64, { folder: folderPath });
+
+    console.log("Uploaded to Cloudinary:", result.secure_url);
+    return result.secure_url;
+
+  } catch (err) {
+    console.error("Cloudinary upload error:", err);
+    throw new Error(`Cloudinary upload failed for ${file.originalname}: ${err}`);
+  }
+};
+
+export const getProducts = async (req: Request, res: Response) => {
+  const result = await productModel.find();
+  res.status(200).json({
+    message: "Success",
+    products: result,
+  });
+};
 
 export const addProducts = async (req: Request, res: Response) => {
   try {
     const { name, quantity, price, description } = req.body;
+
+    const folderPath = `products/${Date.now()}-${name.replace(/\s+/g, "_")}`;
 
     if (!name || !quantity || !price || !description) {
       return res.status(400).json({
@@ -21,11 +39,23 @@ export const addProducts = async (req: Request, res: Response) => {
       });
     }
 
+    
+
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      return res.status(400).json({ message: "Please upload at least one image" });
+    }
+
+    const uploadedImages = await Promise.all(
+      files.map(file => uploadToCloudinary(file, folderPath))
+    );
+
     const result = await productModel.create({
       name,
       quantity,
       price,
       description,
+      images: uploadedImages,
     });
 
     return res.status(201).json({
@@ -42,10 +72,6 @@ export const addProducts = async (req: Request, res: Response) => {
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-
-    const nums =[1,2,3]
-    nums.sort();
-    
 
     if (!id) {
       return res.status(400).json({
@@ -71,8 +97,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
   }
 };
 
-
-export const addReview = async (req:Request, res:Response) => {
+export const addReview = async (req: Request, res: Response) => {
   try {
     const { productId } = req.params;
     const { userId, userName, rating, comment } = req.body;
@@ -98,7 +123,7 @@ export const addReview = async (req:Request, res:Response) => {
       message: "Review added successfully",
       reviews: product.reviews,
     });
-  } catch (err:any) {
+  } catch (err: any) {
     console.log(err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
