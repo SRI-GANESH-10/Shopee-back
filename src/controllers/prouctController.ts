@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import productModel from "../models/productModel";
 import cloudinary from "../config/cloudinary";
+import { isLocal } from "../config/generateEnv";
 
 const uploadToCloudinary = async (file: Express.Multer.File, folderPath: string) => {
   console.log("Uploading file:", file.originalname, "to folder:", folderPath);
@@ -31,7 +32,7 @@ export const addProducts = async (req: Request, res: Response) => {
   try {
     const { name, quantity, price, description } = req.body;
 
-    const folderPath = `products/${Date.now()}-${name.replace(/\s+/g, "_")}`;
+    const folderPath = `${isLocal() ? 'localProducts' : 'mainProducts'}/${Date.now()}-${name.replace(/\s+/g, "_")}`;
 
     if (!name || !quantity || !price || !description) {
       return res.status(400).json({
@@ -42,14 +43,11 @@ export const addProducts = async (req: Request, res: Response) => {
     
 
     const files = req.files as Express.Multer.File[];
-    if (!files || files.length === 0) {
-      return res.status(400).json({ message: "Please upload at least one image" });
-    }
 
-    const uploadedImages = await Promise.all(
+    const uploadedImages = files?.length > 0 ? await Promise.all(
       files.map(file => uploadToCloudinary(file, folderPath))
-    );
-
+    ) : [];
+    
     const result = await productModel.create({
       name,
       quantity,
@@ -79,7 +77,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await productModel.deleteOne({ id });
+    const result = await productModel.deleteOne({ _id: id });
 
     if (result.deletedCount === 0) {
       return res.status(404).json({

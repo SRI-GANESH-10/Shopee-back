@@ -17,6 +17,8 @@ const productSchema = new mongoose.Schema({
   images: [{ type: String }], 
   reviews: [reviewSchema],    
   createdAt: { type: Date, default: Date.now },
+}, {
+  id:false
 });
 
 productSchema.virtual("averageRating").get(function () {
